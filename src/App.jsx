@@ -10,7 +10,7 @@ import Home from './pages/Home'
 import Profile from './pages/Profile'
 import Projects from './pages/Projects'
 import Mentorship from './pages/Mentorship'
-import Explore from './pages/Explore'
+import ExplorePage from './pages/ExplorePage'
 import NotFound from './pages/NotFound'
 import Notifications from './pages/Notifications'
 import Login from './pages/Login'
@@ -35,9 +35,10 @@ function App() {
           <Route path="/" element={<MainLayout />}>
             <Route index element={<Home />} />
             <Route path="profile" element={<Profile />} />
+            <Route path="profile/:userId" element={<Profile />} />
             <Route path="projects" element={<Projects />} />
             <Route path="mentorship" element={<Mentorship />} />
-            <Route path="explore" element={<Explore />} />
+            <Route path="explore" element={<ExplorePage />} />
             <Route path="notifications" element={<Notifications />} />
             
             {/* New routes */}

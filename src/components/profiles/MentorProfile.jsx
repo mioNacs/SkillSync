@@ -4,6 +4,7 @@ import MentoringTopicsForm from '../profile/MentoringTopicsForm';
 import SkillForm from '../profile/SkillForm';
 import AvailabilityForm from '../profile/AvailabilityForm';
 import { useAuth } from '../../context/AuthContext';
+import { ConnectionButton } from '../ConnectionSystem';
 
 const MentorProfile = ({ user, isOwnProfile = false }) => {
   const { updateUserProfile, currentUser } = useAuth();
@@ -481,7 +482,16 @@ const MentorProfile = ({ user, isOwnProfile = false }) => {
         )}
       </div>
       
-      
+      {!isOwnProfile && (
+        <ConnectionButton 
+          targetUser={{ 
+            id: user.uid,
+            name: name,
+            role: 'mentor',
+            profileImage: profileImage
+          }} 
+        />
+      )}
     </div>
   );
 };

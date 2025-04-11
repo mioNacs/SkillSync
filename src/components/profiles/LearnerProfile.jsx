@@ -1,7 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { ConnectionButton } from '../ConnectionSystem';
 
-const LearnerProfile = ({ user }) => {
+const LearnerProfile = ({ user, isOwnProfile = false }) => {
   // Extract learner-specific fields with defaults
   const {
     name = '',
@@ -14,7 +15,8 @@ const LearnerProfile = ({ user }) => {
     projects = [],
     mentorshipNeeded = false,
     collaboratingOn = '',
-    profileImage = null
+    profileImage = null,
+    uid
   } = user || {};
 
   const experienceLevelColors = {
@@ -74,12 +76,16 @@ const LearnerProfile = ({ user }) => {
             </div>
           </div>
           
-          <button className="bg-indigo-600 text-white px-4 py-2 rounded-md font-medium hover:bg-indigo-700 text-sm flex items-center gap-1">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"></path>
-            </svg>
-            Connect
-          </button>
+          {!isOwnProfile && (
+            <ConnectionButton 
+              targetUser={{ 
+                id: uid,
+                name: name,
+                role: 'learner',
+                profileImage: profileImage
+              }} 
+            />
+          )}
         </div>
       </div>
       

@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import ProfileImage from '../components/profile/ProfileImage'
 import SkillForm from '../components/profile/SkillForm'
 import ExperienceForm from '../components/profile/ExperienceForm'
 import ProjectForm from '../components/profile/ProjectForm'
 import EducationForm from '../components/profile/EducationForm'
 import ProfileRouter from '../components/profiles/ProfileRouter'
+import { doc, getDoc } from 'firebase/firestore'
+import { db } from '../firebase'
 
 const Profile = () => {
   const [activeTab, setActiveTab] = useState('skills')
@@ -28,9 +30,48 @@ const Profile = () => {
   
   // State for editing items
   const [editingItem, setEditingItem] = useState(null);
+  const [viewedUserProfile, setViewedUserProfile] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
   
   const { currentUser, userProfile, updateUserProfile, isAuthenticated } = useAuth()
   const navigate = useNavigate()
+  const { userId } = useParams();
+  
+  const isViewingOtherProfile = userId && userId !== currentUser?.uid;
+
+  // Fetch specific user profile if viewing someone else's profile
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (!userId || userId === currentUser?.uid) {
+        setViewedUserProfile(null);
+        return;
+      }
+      
+      setIsLoading(true);
+      try {
+        const userDocRef = doc(db, 'users', userId);
+        const userDoc = await getDoc(userDocRef);
+        
+        if (userDoc.exists()) {
+          setViewedUserProfile({
+            ...userDoc.data(),
+            uid: userDoc.id
+          });
+        } else {
+          setError('User not found');
+          navigate('/explore', { replace: true });
+        }
+      } catch (err) {
+        console.error('Error fetching user profile:', err);
+        setError('Error loading profile. Please try again later.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchUserProfile();
+  }, [userId, currentUser?.uid, navigate]);
 
   // Redirect if not logged in
   useEffect(() => {
@@ -41,7 +82,7 @@ const Profile = () => {
 
   // Update form data when user profile changes
   useEffect(() => {
-    if (userProfile) {
+    if (userProfile && !isViewingOtherProfile) {
       setFormData({
         name: userProfile.name || '',
         title: userProfile.title || '',
@@ -50,7 +91,7 @@ const Profile = () => {
         website: userProfile.website || '',
       })
     }
-  }, [userProfile])
+  }, [userProfile, isViewingOtherProfile])
 
   // Reset form display states when changing tabs
   useEffect(() => {
@@ -278,7 +319,37 @@ const Profile = () => {
     </form>
   )
 
-  // Loading state
+  // If viewing someone else's profile, render their profile
+  if (isViewingOtherProfile) {
+    if (isLoading) {
+      return (
+        <div className="flex justify-center items-center h-screen">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+          <span className="ml-3 text-gray-600">Loading profile...</span>
+        </div>
+      );
+    }
+    
+    if (error) {
+      return (
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="bg-red-50 border border-red-200 rounded-md p-4 text-red-700">
+            {error}
+          </div>
+        </div>
+      );
+    }
+    
+    if (viewedUserProfile) {
+      return (
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <ProfileRouter user={viewedUserProfile} />
+        </div>
+      );
+    }
+  }
+
+  // Loading state for own profile
   if (!userProfile || !currentUser) {
     return (
       <div className="max-w-4xl mx-auto flex items-center justify-center min-h-[50vh]">
@@ -289,7 +360,7 @@ const Profile = () => {
       </div>
     )
   }
-  
+
   // Prepare data for UI display
   const displayName = userProfile.name || currentUser.displayName || 'User'
   const initials = displayName.split(' ').map(n => n[0]).join('')
