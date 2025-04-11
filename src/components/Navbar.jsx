@@ -21,30 +21,46 @@ const Navbar = ({ toggleSidebar, scrolled }) => {
       <div className="container mx-auto px-4 py-3">
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-4">
-            <button 
-              onClick={toggleSidebar}
-              className="md:hidden p-2 rounded-md hover:bg-indigo-800 text-white transition-colors duration-200"
-              aria-label="Toggle sidebar"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
-            <Link to="/" className="flex items-center space-x-2">
-              <div className="h-8 w-8 rounded-md bg-white flex items-center justify-center">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-indigo-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            {/* Only show the sidebar toggle button for authenticated users */}
+            {isAuthenticated && (
+              <button 
+                onClick={toggleSidebar}
+                className="md:hidden p-2 rounded-md hover:bg-indigo-800 text-white transition-colors duration-200"
+                aria-label="Toggle sidebar"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+            )}
+            <Link to="/" className="flex items-center">
+              {/* Updated logo design */}
+              <div className="h-9 w-9 rounded-lg bg-white flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-indigo-700" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
               </div>
-              <span className={`font-bold text-xl ${scrolled ? 'text-indigo-700' : 'text-white'} transition-colors duration-300`}>SkillSync</span>
+              <div className="ml-2 flex flex-col">
+                {/* Updated font style */}
+                <span className={`font-bold text-lg tracking-wider ${scrolled ? 'text-indigo-700' : 'text-white'} transition-colors duration-300`} style={{ fontFamily: "'Poppins', sans-serif" }}>
+                  SkillSync
+                </span>
+                {/* Added "by BitLinguals" subscript */}
+                <span className={`text-[10px] -mt-1 italic ${scrolled ? 'text-indigo-500' : 'text-indigo-200'} transition-colors duration-300`}>
+                  by BitLinguals
+                </span>
+              </div>
             </Link>
           </div>
           
-          <div className={`hidden md:flex items-center space-x-6 ${scrolled ? 'text-gray-700' : 'text-white'} transition-colors duration-300`}>
-            <Link to="/explore" className="hover:text-indigo-400 transition-colors duration-200">Explore</Link>
-            <Link to="/projects" className="hover:text-indigo-400 transition-colors duration-200">Projects</Link>
-            <Link to="/mentorship" className="hover:text-indigo-400 transition-colors duration-200">Mentorship</Link>
-          </div>
+          {/* Only show navigation links for authenticated users */}
+          {isAuthenticated && (
+            <div className={`hidden md:flex items-center space-x-6 ${scrolled ? 'text-gray-700' : 'text-white'} transition-colors duration-300`}>
+              <Link to="/explore" className="hover:text-indigo-400 transition-colors duration-200">Explore</Link>
+              <Link to="/projects" className="hover:text-indigo-400 transition-colors duration-200">Projects</Link>
+              <Link to="/mentorship" className="hover:text-indigo-400 transition-colors duration-200">Mentorship</Link>
+            </div>
+          )}
           
           <div className="flex items-center space-x-4">
             {isAuthenticated ? (
@@ -211,4 +227,4 @@ const Navbar = ({ toggleSidebar, scrolled }) => {
   )
 }
 
-export default Navbar 
+export default Navbar

@@ -1,15 +1,23 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 import SkillCard from '../components/SkillCard'
 import ProjectCard from '../components/ProjectCard'
 import MentorCard from '../components/MentorCard'
+import Dashboard from '../components/Dashboard'
 
 const Home = () => {
   const [isLoaded, setIsLoaded] = useState(false)
+  const { isAuthenticated } = useAuth()
   
   useEffect(() => {
     setIsLoaded(true)
   }, [])
+  
+  // If user is not authenticated, render the guest Dashboard
+  if (!isAuthenticated) {
+    return <Dashboard />
+  }
   
   // Sample data - would come from API in real app
   const recommendedProjects = [
@@ -215,4 +223,4 @@ const Home = () => {
   )
 }
 
-export default Home 
+export default Home

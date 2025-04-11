@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
 import { Outlet } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 import Navbar from '../components/Navbar'
 import Sidebar from '../components/Sidebar'
 
 const MainLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
+  const { isAuthenticated } = useAuth()
 
   useEffect(() => {
     const handleScroll = () => {
@@ -32,8 +34,9 @@ const MainLayout = () => {
       
       <Navbar toggleSidebar={toggleSidebar} scrolled={scrolled} />
       <div className="flex pt-16">
-        <Sidebar isOpen={sidebarOpen} />
-        <main className="flex-1 p-4 md:p-6 pt-6 ml-0 md:ml-72 transition-all duration-300 ease-in-out max-w-[calc(100%-0rem)] md:max-w-[calc(100%-18rem)]">
+        {/* Only render Sidebar for authenticated users */}
+        {isAuthenticated && <Sidebar isOpen={sidebarOpen} />}
+        <main className={`flex-1 p-4 md:p-6 pt-6 transition-all duration-300 ease-in-out ${isAuthenticated ? 'ml-0 md:ml-72 max-w-[calc(100%-0rem)] md:max-w-[calc(100%-18rem)]' : 'ml-0 max-w-full'}`}>
           <div className="max-w-7xl mx-auto">
             <Outlet />
           </div>
@@ -43,4 +46,4 @@ const MainLayout = () => {
   )
 }
 
-export default MainLayout 
+export default MainLayout

@@ -58,13 +58,17 @@ const Sidebar = ({ isOpen }) => {
         {/* Fixed height sidebar content with scrollable interior */}
         <div className="h-full flex flex-col pt-16">
           <div className="p-4 flex-1 overflow-y-auto scrollbar-thin">
-            <div className="border-b pb-4 mb-6 flex flex-col items-center md:items-start">
-              <div className="w-16 h-16 rounded-full bg-indigo-100 mb-3 flex items-center justify-center">
-                <svg className="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-              </div>
-              <h2 className="text-lg font-semibold text-indigo-800">SkillSync</h2>
+            <div className="border-b pb-4 mb-6 flex flex-col items-center md:items-center">
+              {/* Updated logo design */}
+              
+              {/* Updated font style with custom typography */}
+              <h2 className="text-2xl font-bold text-indigo-800 tracking-wider" style={{ fontFamily: "'Poppins', sans-serif" }}>
+                SkillSync
+              </h2>
+              {/* Added "by BitLinguals" subscript */}
+              <p className="text-xs text-indigo-500 -mt-1 mb-1 italic font-medium">
+                by BitLinguals
+              </p>
               <p className="text-sm text-gray-600">Connecting skills & people</p>
               
               {isAuthenticated && (
