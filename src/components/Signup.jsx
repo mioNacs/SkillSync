@@ -7,6 +7,7 @@ const Signup = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [role, setRole] = useState('member');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { signup, googleSignIn } = useAuth();
@@ -19,14 +20,23 @@ const Signup = () => {
       return setError('Passwords do not match');
     }
 
+    if (password.length < 6) {
+      return setError('Password must be at least 6 characters');
+    }
+
     setError('');
     setLoading(true);
 
     try {
-      await signup(email, password, name);
-      navigate('/dashboard');
+      await signup(email, password, name, role);
+      navigate('/');
     } catch (error) {
-      setError('Failed to create an account: ' + error.message);
+      if (error.code === 'auth/email-already-in-use') {
+        setError('This email is already in use. Please use a different email or sign in instead.');
+      } else {
+        setError('Failed to create an account. Please try again.');
+      }
+      console.error(error);
     }
 
     setLoading(false);
@@ -38,32 +48,56 @@ const Signup = () => {
 
     try {
       await googleSignIn();
-      navigate('/dashboard');
+      navigate('/');
     } catch (error) {
-      setError('Failed to sign in with Google: ' + error.message);
+      setError('Failed to sign up with Google. Please try again.');
+      console.error(error);
     }
 
     setLoading(false);
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow-md">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-indigo-50 to-slate-50 px-4 py-12">
+      <Link to="/" className="flex items-center mb-8">
+        <div className="h-10 w-10 rounded-md bg-indigo-600 flex items-center justify-center mr-2">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+        </div>
+        <span className="text-2xl font-bold text-indigo-600">SkillSync</span>
+      </Link>
+      
+      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-md">
         <div>
-          <h2 className="mt-6 text-center text-3xl font-bold text-gray-900">
+          <h2 className="text-center text-3xl font-extrabold text-gray-900">
             Create your account
           </h2>
+          <p className="mt-2 text-center text-sm text-gray-600">
+            Join SkillSync to connect with mentors and collaborate on projects
+          </p>
         </div>
+        
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-            <span className="block sm:inline">{error}</span>
+          <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md" role="alert">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-red-700">{error}</p>
+              </div>
+            </div>
           </div>
         )}
+        
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="rounded-md shadow-sm -space-y-px">
+          <div className="space-y-4">
             <div>
-              <label htmlFor="name" className="sr-only">
-                Name
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                Full name
               </label>
               <input
                 id="name"
@@ -71,14 +105,15 @@ const Signup = () => {
                 type="text"
                 autoComplete="name"
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Full name"
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                placeholder="John Smith"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
             </div>
+            
             <div>
-              <label htmlFor="email-address" className="sr-only">
+              <label htmlFor="email-address" className="block text-sm font-medium text-gray-700">
                 Email address
               </label>
               <input
@@ -87,14 +122,32 @@ const Signup = () => {
                 type="email"
                 autoComplete="email"
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Email address"
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
+            
             <div>
-              <label htmlFor="password" className="sr-only">
+              <label htmlFor="role" className="block text-sm font-medium text-gray-700">
+                I want to join as
+              </label>
+              <select
+                id="role"
+                name="role"
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+              >
+                <option value="member">Member (Looking to learn and collaborate)</option>
+                <option value="mentor">Mentor (Offering guidance and expertise)</option>
+                <option value="recruiter">Recruiter (Seeking talent)</option>
+              </select>
+            </div>
+            
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                 Password
               </label>
               <input
@@ -103,14 +156,16 @@ const Signup = () => {
                 type="password"
                 autoComplete="new-password"
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Password"
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
+              <p className="mt-1 text-xs text-gray-500">Must be at least 6 characters</p>
             </div>
+            
             <div>
-              <label htmlFor="confirm-password" className="sr-only">
+              <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700">
                 Confirm Password
               </label>
               <input
@@ -119,33 +174,63 @@ const Signup = () => {
                 type="password"
                 autoComplete="new-password"
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Confirm password"
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                placeholder="••••••••"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
               />
             </div>
           </div>
 
+          <div className="flex items-center">
+            <input
+              id="terms"
+              name="terms"
+              type="checkbox"
+              required
+              className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+            />
+            <label htmlFor="terms" className="ml-2 block text-sm text-gray-700">
+              I agree to the <a href="#" className="text-indigo-600 hover:text-indigo-500">Terms of Service</a> and <a href="#" className="text-indigo-600 hover:text-indigo-500">Privacy Policy</a>
+            </label>
+          </div>
+
           <div>
             <button
               type="submit"
               disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200"
             >
-              {loading ? 'Signing up...' : 'Sign up'}
+              {loading ? (
+                <span className="flex items-center">
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Creating account...
+                </span>
+              ) : 'Create account'}
             </button>
           </div>
         </form>
+        
+        <div className="mt-6">
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-white text-gray-500">Or sign up with</span>
+            </div>
+          </div>
 
-        <div className="mt-4">
-          <button
-            onClick={handleGoogleSignIn}
-            disabled={loading}
-            className="group relative w-full flex justify-center py-2 px-4 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            <span className="flex items-center">
-              <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
+          <div className="mt-6">
+            <button
+              onClick={handleGoogleSignIn}
+              disabled={loading}
+              className="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200"
+            >
+              <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24">
                 <path
                   fill="#4285F4"
                   d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -164,15 +249,15 @@ const Signup = () => {
                 />
               </svg>
               Sign up with Google
-            </span>
-          </button>
+            </button>
+          </div>
         </div>
 
-        <div className="text-center mt-4">
-          <p>
+        <div className="text-center mt-6">
+          <p className="text-sm text-gray-600">
             Already have an account?{' '}
-            <Link to="/login" className="text-blue-600 hover:text-blue-800">
-              Log in
+            <Link to="/login" className="font-medium text-indigo-600 hover:text-indigo-500 transition-colors duration-200">
+              Sign in now
             </Link>
           </p>
         </div>

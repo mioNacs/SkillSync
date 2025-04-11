@@ -5,9 +5,12 @@ import {
   signOut, 
   onAuthStateChanged,
   GoogleAuthProvider,
-  signInWithPopup
+  signInWithPopup,
+  updateProfile,
+  onIdTokenChanged,
+  getIdToken
 } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 
 const AuthContext = createContext();
@@ -18,22 +21,32 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [refreshToken, setRefreshToken] = useState(null);
 
   // Sign up with email and password
-  const signup = async (email, password, name) => {
+  const signup = async (email, password, name, role = 'member') => {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
+      
+      // Update user profile with display name
+      await updateProfile(user, { displayName: name });
 
       // Create user document in Firestore
       await setDoc(doc(db, 'users', user.uid), {
         uid: user.uid,
         name: name,
         email: email,
+        role: role,
         skills: [],
-        goals: ''
+        interests: [],
+        bio: '',
+        profileCompleted: false,
+        createdAt: new Date().toISOString(),
+        profileImage: null
       });
 
       return user;
@@ -70,8 +83,13 @@ export const AuthProvider = ({ children }) => {
           uid: user.uid,
           name: user.displayName || '',
           email: user.email,
+          role: 'member',
           skills: [],
-          goals: ''
+          interests: [],
+          bio: '',
+          profileCompleted: false,
+          createdAt: new Date().toISOString(),
+          profileImage: user.photoURL || null
         });
       }
       
@@ -83,8 +101,14 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Logout user
-  const logout = () => {
-    return signOut(auth);
+  const logout = async () => {
+    try {
+      await signOut(auth);
+      setUserProfile(null);
+    } catch (error) {
+      setError(error.message);
+      throw error;
+    }
   };
 
   // Get user data from Firestore
@@ -92,7 +116,9 @@ export const AuthProvider = ({ children }) => {
     try {
       const userDoc = await getDoc(doc(db, 'users', uid));
       if (userDoc.exists()) {
-        return userDoc.data();
+        const userData = userDoc.data();
+        setUserProfile(userData);
+        return userData;
       }
       return null;
     } catch (error) {
@@ -101,24 +127,116 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Update user profile
+  const updateUserProfile = async (uid, data) => {
+    try {
+      const userRef = doc(db, 'users', uid);
+      await updateDoc(userRef, {
+        ...data,
+        updatedAt: new Date().toISOString()
+      });
+      
+      // Update local state
+      const updatedProfile = { ...userProfile, ...data };
+      setUserProfile(updatedProfile);
+      
+      return updatedProfile;
+    } catch (error) {
+      setError(error.message);
+      throw error;
+    }
+  };
+
+  // Token refresh function
+  const refreshUserToken = async (user) => {
+    if (user) {
+      const token = await getIdToken(user, true);
+      localStorage.setItem('authToken', token);
+      
+      // Set a timeout to refresh the token before it expires (every 20 minutes)
+      const tokenRefreshTimeout = setTimeout(() => {
+        refreshUserToken(user);
+      }, auth.tokenRefreshTime); // 20 minutes in milliseconds
+      
+      return () => clearTimeout(tokenRefreshTimeout);
+    }
+  };
+
   // Listen for auth state changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
+      
+      if (user) {
+        try {
+          // Fetch user data from Firestore whenever auth state changes
+          await getUserData(user.uid);
+          
+          // Refresh the token and set up automatic refresh
+          refreshUserToken(user);
+        } catch (err) {
+          console.error("Error fetching user data:", err);
+        }
+      } else {
+        // Clear token from localStorage if user is logged out
+        localStorage.removeItem('authToken');
+      }
+      
       setLoading(false);
     });
 
     return unsubscribe;
   }, []);
 
+  // Set up token refresh listener
+  useEffect(() => {
+    const unsubscribe = onIdTokenChanged(auth, async (user) => {
+      if (user) {
+        // Get new token and store it
+        const token = await getIdToken(user);
+        setRefreshToken(token);
+        localStorage.setItem('authToken', token);
+      } else {
+        setRefreshToken(null);
+        localStorage.removeItem('authToken');
+      }
+    });
+
+    return unsubscribe;
+  }, []);
+
+  // Try to restore user session on page reload
+  useEffect(() => {
+    const checkTokenOnRefresh = () => {
+      const storedToken = localStorage.getItem('authToken');
+      if (storedToken && !currentUser) {
+        // Force refresh when token exists but user state is null
+        setLoading(true);
+      }
+    };
+
+    window.addEventListener('storage', checkTokenOnRefresh);
+    window.addEventListener('focus', checkTokenOnRefresh);
+    
+    return () => {
+      window.removeEventListener('storage', checkTokenOnRefresh);
+      window.removeEventListener('focus', checkTokenOnRefresh);
+    };
+  }, [currentUser]);
+
   const value = {
     currentUser,
+    userProfile,
     signup,
     login,
     logout,
     googleSignIn,
     getUserData,
-    error
+    updateUserProfile,
+    error,
+    setError,
+    isAuthenticated: !!currentUser,
+    refreshToken
   };
 
   return (

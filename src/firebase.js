@@ -1,7 +1,8 @@
 // src/firebase.js
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { getAuth, browserLocalPersistence, setPersistence, inMemoryPersistence } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
     apiKey: "AIzaSyCpkcTKF-5g4ZIFEVDy0lalAylYY6hSb7o",
@@ -16,4 +17,10 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
+// Set session token refresh time to 20 minutes (1200000 milliseconds)
+auth.tokenRefreshTime = 1200000;
+// Configure persistence to keep user logged in between page refreshes
+setPersistence(auth, browserLocalPersistence);
+
 export const db = getFirestore(app);
+export const storage = getStorage(app);

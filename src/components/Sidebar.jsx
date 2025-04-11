@@ -1,7 +1,9 @@
 import { Link, useLocation } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 
 const Sidebar = ({ isOpen }) => {
   const location = useLocation()
+  const { currentUser, userProfile, isAuthenticated } = useAuth()
   
   const navItems = [
     { name: 'Dashboard', path: '/', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
@@ -10,6 +12,20 @@ const Sidebar = ({ isOpen }) => {
     { name: 'Mentorship', path: '/mentorship', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' },
     { name: 'Explore', path: '/explore', icon: 'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z' },
   ]
+  
+  // Get user initials for avatar
+  const getUserInitials = () => {
+    if (userProfile?.name) {
+      return userProfile.name.split(' ').map(n => n[0]).join('').toUpperCase()
+    }
+    if (currentUser?.displayName) {
+      return currentUser.displayName.split(' ').map(n => n[0]).join('').toUpperCase()
+    }
+    if (currentUser?.email) {
+      return currentUser.email[0].toUpperCase()
+    }
+    return 'U'
+  }
   
   return (
     <>
@@ -33,21 +49,33 @@ const Sidebar = ({ isOpen }) => {
               <h2 className="text-lg font-semibold text-indigo-800">SkillSync</h2>
               <p className="text-sm text-gray-600">Connecting skills & people</p>
               
-              <div className="mt-3 text-center md:text-left w-full">
-                <div className="bg-indigo-50 p-3 rounded-lg">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0 mr-3">
-                      <div className="h-10 w-10 rounded-full bg-indigo-200 flex items-center justify-center text-indigo-700 font-bold">
-                        JS
+              {isAuthenticated && (
+                <div className="mt-3 text-center md:text-left w-full">
+                  <div className="bg-indigo-50 p-3 rounded-lg">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 mr-3">
+                        {userProfile?.profileImage ? (
+                          <img 
+                            src={userProfile.profileImage} 
+                            alt={userProfile.name || currentUser.displayName} 
+                            className="h-10 w-10 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="h-10 w-10 rounded-full bg-indigo-200 flex items-center justify-center text-indigo-700 font-bold">
+                            {getUserInitials()}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-800">John Smith</p>
-                      <p className="text-xs text-gray-500">Frontend Developer</p>
+                      <div>
+                        <p className="text-sm font-medium text-gray-800">
+                          {userProfile?.name || currentUser?.displayName || 'User'}
+                        </p>
+                        <p className="text-xs text-gray-500">{userProfile?.title || 'SkillSync Member'}</p>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
             
             <nav>
@@ -75,16 +103,6 @@ const Sidebar = ({ isOpen }) => {
                 })}
               </ul>
             </nav>
-          </div>
-          
-          <div className="p-4 border-t">
-            <div className="bg-gradient-to-r from-indigo-100 to-purple-100 p-4 rounded-lg">
-              <h3 className="font-medium text-indigo-800 text-sm">Upgrade to Pro</h3>
-              <p className="text-xs text-gray-600 mt-1">Get access to advanced features and priority support.</p>
-              <button className="mt-3 w-full bg-indigo-600 text-white py-2 rounded-md text-sm font-medium hover:bg-indigo-700 transition-colors">
-                Upgrade
-              </button>
-            </div>
           </div>
         </div>
       </div>
