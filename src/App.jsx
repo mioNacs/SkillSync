@@ -15,6 +15,12 @@ import NotFound from './pages/NotFound'
 import Notifications from './pages/Notifications'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
+// New pages
+import Jobs from './pages/Jobs'
+import Talents from './pages/Talents' 
+import OfferMentorship from './pages/OfferMentorship'
+import ContactTalents from './pages/ContactTalents'
+import ConnectTalents from './pages/ConnectTalents'
 
 function App() {
   return (
@@ -33,6 +39,14 @@ function App() {
             <Route path="mentorship" element={<Mentorship />} />
             <Route path="explore" element={<Explore />} />
             <Route path="notifications" element={<Notifications />} />
+            
+            {/* New routes */}
+            <Route path="jobs" element={<Jobs />} />
+            <Route path="talents" element={<Talents />} />
+            <Route path="offer-mentorship" element={<OfferMentorship />} />
+            <Route path="contact-talents" element={<ContactTalents />} />
+            <Route path="connect-talents" element={<ConnectTalents />} />
+            
             <Route path="*" element={<NotFound />} />
           </Route>
         </Routes>
