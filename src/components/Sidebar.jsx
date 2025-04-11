@@ -12,31 +12,83 @@ const Sidebar = ({ isOpen }) => {
   ]
   
   return (
-    <div className={`${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 fixed md:relative left-0 top-0 h-screen w-64 bg-white border-r transition-transform duration-300 ease-in-out z-30 md:z-auto shadow-lg md:shadow-none pt-16 md:pt-0`}>
-      <div className="p-4">
-        <div className="border-b pb-4 mb-4">
-          <h2 className="text-lg font-semibold text-indigo-800">SkillSync</h2>
-          <p className="text-sm text-gray-600">Connecting skills & people</p>
+    <>
+      {/* Backdrop for mobile */}
+      <div 
+        className={`${isOpen ? 'opacity-50 pointer-events-auto' : 'opacity-0 pointer-events-none'} fixed inset-0 bg-black z-20 transition-opacity duration-300 md:hidden`}
+        onClick={() => document.dispatchEvent(new CustomEvent('toggleSidebar'))}
+      ></div>
+      
+      {/* Sidebar */}
+      <div className={`${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 fixed top-0 left-0 h-full w-72 bg-white border-r z-30 shadow-lg md:shadow-none overflow-hidden transition-transform duration-300 ease-in-out`}>
+        {/* Fixed height sidebar content with scrollable interior */}
+        <div className="h-full flex flex-col pt-16">
+          <div className="p-4 flex-1 overflow-y-auto scrollbar-thin">
+            <div className="border-b pb-4 mb-6 flex flex-col items-center md:items-start">
+              <div className="w-16 h-16 rounded-full bg-indigo-100 mb-3 flex items-center justify-center">
+                <svg className="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <h2 className="text-lg font-semibold text-indigo-800">SkillSync</h2>
+              <p className="text-sm text-gray-600">Connecting skills & people</p>
+              
+              <div className="mt-3 text-center md:text-left w-full">
+                <div className="bg-indigo-50 p-3 rounded-lg">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0 mr-3">
+                      <div className="h-10 w-10 rounded-full bg-indigo-200 flex items-center justify-center text-indigo-700 font-bold">
+                        JS
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">John Smith</p>
+                      <p className="text-xs text-gray-500">Frontend Developer</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <nav>
+              <ul className="space-y-1">
+                {navItems.map((item) => {
+                  const isActive = location.pathname === item.path;
+                  return (
+                    <li key={item.name}>
+                      <Link 
+                        to={item.path} 
+                        className={`flex items-center p-3 rounded-lg text-sm transition-all duration-200 ${
+                          isActive 
+                            ? 'bg-indigo-50 text-indigo-700 font-medium shadow-sm' 
+                            : 'text-gray-700 hover:bg-gray-50 hover:text-indigo-600'
+                        }`}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 mr-3 ${isActive ? 'text-indigo-600' : 'text-gray-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={isActive ? 2 : 1.5} d={item.icon} />
+                        </svg>
+                        <span>{item.name}</span>
+                        {isActive && <span className="ml-auto h-2 w-2 rounded-full bg-indigo-600"></span>}
+                      </Link>
+                    </li>
+                  )
+                })}
+              </ul>
+            </nav>
+          </div>
+          
+          <div className="p-4 border-t">
+            <div className="bg-gradient-to-r from-indigo-100 to-purple-100 p-4 rounded-lg">
+              <h3 className="font-medium text-indigo-800 text-sm">Upgrade to Pro</h3>
+              <p className="text-xs text-gray-600 mt-1">Get access to advanced features and priority support.</p>
+              <button className="mt-3 w-full bg-indigo-600 text-white py-2 rounded-md text-sm font-medium hover:bg-indigo-700 transition-colors">
+                Upgrade
+              </button>
+            </div>
+          </div>
         </div>
-        <nav>
-          <ul className="space-y-2">
-            {navItems.map((item) => (
-              <li key={item.name}>
-                <Link 
-                  to={item.path} 
-                  className={`flex items-center p-2 rounded-md text-sm ${location.pathname === item.path ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700 hover:bg-gray-50'}`}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={item.icon} />
-                  </svg>
-                  {item.name}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
       </div>
-    </div>
+    </>
   )
 }
 

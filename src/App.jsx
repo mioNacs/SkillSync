@@ -11,6 +11,7 @@ import Projects from './pages/Projects'
 import Mentorship from './pages/Mentorship'
 import Explore from './pages/Explore'
 import NotFound from './pages/NotFound'
+import Notifications from './pages/Notifications'
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
           <Route path="projects" element={<Projects />} />
           <Route path="mentorship" element={<Mentorship />} />
           <Route path="explore" element={<Explore />} />
+          <Route path="notifications" element={<Notifications />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
