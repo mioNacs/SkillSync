@@ -1,31 +1,34 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
-import Login from './components/Login';
-import Signup from './components/Signup';
-import Dashboard from './components/Dashboard';
-import ProtectedRoute from './components/ProtectedRoute';
-import './App.css';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import './App.css'
+
+// Layouts
+import MainLayout from './layouts/MainLayout'
+
+// Pages
+import Home from './pages/Home'
+import Profile from './pages/Profile'
+import Projects from './pages/Projects'
+import Mentorship from './pages/Mentorship'
+import Explore from './pages/Explore'
+import NotFound from './pages/NotFound'
+import Notifications from './pages/Notifications'
 
 function App() {
   return (
     <Router>
-      <AuthProvider>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route 
-            path="/dashboard" 
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            } 
-          />
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-      </AuthProvider>
+      <Routes>
+        <Route path="/" element={<MainLayout />}>
+          <Route index element={<Home />} />
+          <Route path="profile" element={<Profile />} />
+          <Route path="projects" element={<Projects />} />
+          <Route path="mentorship" element={<Mentorship />} />
+          <Route path="explore" element={<Explore />} />
+          <Route path="notifications" element={<Notifications />} />
+          <Route path="*" element={<NotFound />} />
+        </Route>
+      </Routes>
     </Router>
-  );
+  )
 }
 
 export default App;
