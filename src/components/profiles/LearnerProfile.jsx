@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ConnectionButton } from '../ConnectionSystem';
+import ChatButton from '../chat/ChatButton';
 
 const LearnerProfile = ({ user, isOwnProfile = false }) => {
   // Extract learner-specific fields with defaults
@@ -77,14 +78,22 @@ const LearnerProfile = ({ user, isOwnProfile = false }) => {
           </div>
           
           {!isOwnProfile && (
-            <ConnectionButton 
-              targetUser={{ 
-                id: uid,
-                name: name,
-                role: 'learner',
-                profileImage: profileImage
-              }} 
-            />
+            <div className="flex space-x-4">
+              <ConnectionButton 
+                targetUser={{ 
+                  id: user.uid,
+                  name: name,
+                  role: 'learner',
+                  profileImage: profileImage
+                }} 
+              />
+              <ChatButton
+                otherUserId={user.uid}
+                otherUserName={name}
+                otherUserPhoto={profileImage}
+                buttonText="Message Learner"
+              />
+            </div>
           )}
         </div>
       </div>

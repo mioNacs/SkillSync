@@ -4,6 +4,7 @@ import OpenRoleForm from '../profile/OpenRoleForm';
 import TalentNeedsForm from '../profile/TalentNeedsForm';
 import { useAuth } from '../../context/AuthContext';
 import { ConnectionButton } from '../ConnectionSystem';
+import ChatButton from '../chat/ChatButton';
 
 const RecruiterProfile = ({ user, isOwnProfile = false }) => {
   const { updateUserProfile, currentUser } = useAuth();
@@ -263,14 +264,22 @@ const RecruiterProfile = ({ user, isOwnProfile = false }) => {
                 </div>
               </>
             ) : (
-              <ConnectionButton 
-                targetUser={{ 
-                  id: user.uid,
-                  name: name,
-                  role: 'recruiter',
-                  profileImage: profileImage
-                }} 
-              />
+              <div className="flex space-x-4">
+                <ConnectionButton 
+                  targetUser={{ 
+                    id: user.uid,
+                    name: name,
+                    role: 'recruiter',
+                    profileImage: profileImage
+                  }} 
+                />
+                <ChatButton
+                  otherUserId={user.uid}
+                  otherUserName={name}
+                  otherUserPhoto={profileImage}
+                  buttonText="Message Recruiter"
+                />
+              </div>
             )}
           </div>
         </div>

@@ -309,31 +309,43 @@ const useRequests = () => {
     const connectionsQuery = query(
       collection(db, 'requests'),
       where('status', '==', 'accepted'),
-      where('fromId', 'in', [currentUser.uid]),
+      where('fromId', '==', currentUser.uid),
     );
 
     const connectionsUnsubscribe = onSnapshot(connectionsQuery, async (snapshot) => {
       const acceptedConnections = [];
       
-      for (const doc of snapshot.docs) {
-        const connection = { id: doc.id, ...doc.data() };
+      for (const docSnap of snapshot.docs) {
+        const connection = { id: docSnap.id, ...docSnap.data() };
         
-        // Get connected user data
-        const otherUserId = connection.fromId === currentUser.uid ? connection.toId : connection.fromId;
-        
+        // Get connected user data - for outgoing connections, this is the toId
         try {
-          const userDoc = await getDoc(doc(db, 'users', otherUserId));
+          const userDoc = await getDoc(doc(db, 'users', connection.toId));
           if (userDoc.exists()) {
             const userData = userDoc.data();
             connection.connectedUser = {
-              id: otherUserId,
-              name: userData.name,
-              role: userData.role,
-              profileImage: userData.profileImage
+              id: connection.toId,
+              name: userData.name || 'Unknown User',
+              role: userData.role || connection.toRole || 'user',
+              profileImage: userData.profileImage || null
+            };
+          } else {
+            console.warn(`User document for ${connection.toId} does not exist`);
+            connection.connectedUser = {
+              id: connection.toId,
+              name: 'Unknown User',
+              role: connection.toRole || 'user',
+              profileImage: null
             };
           }
         } catch (err) {
           console.error('Error fetching connection user data:', err);
+          connection.connectedUser = {
+            id: connection.toId,
+            name: 'Error Loading User',
+            role: connection.toRole || 'user',
+            profileImage: null
+          };
         }
         
         acceptedConnections.push(connection);
@@ -348,28 +360,43 @@ const useRequests = () => {
       
       const incomingConnectionsSnapshot = await getDocs(incomingConnections);
       
-      for (const doc of incomingConnectionsSnapshot.docs) {
-        const connection = { id: doc.id, ...doc.data() };
+      for (const docSnap of incomingConnectionsSnapshot.docs) {
+        const connection = { id: docSnap.id, ...docSnap.data() };
         
-        // Get connected user data
+        // Get connected user data - for incoming connections, this is the fromId
         try {
           const userDoc = await getDoc(doc(db, 'users', connection.fromId));
           if (userDoc.exists()) {
             const userData = userDoc.data();
             connection.connectedUser = {
               id: connection.fromId,
-              name: userData.name,
-              role: userData.role,
-              profileImage: userData.profileImage
+              name: userData.name || 'Unknown User',
+              role: userData.role || connection.fromRole || 'user',
+              profileImage: userData.profileImage || null
+            };
+          } else {
+            console.warn(`User document for ${connection.fromId} does not exist`);
+            connection.connectedUser = {
+              id: connection.fromId,
+              name: 'Unknown User',
+              role: connection.fromRole || 'user',
+              profileImage: null
             };
           }
         } catch (err) {
           console.error('Error fetching connection user data:', err);
+          connection.connectedUser = {
+            id: connection.fromId,
+            name: 'Error Loading User',
+            role: connection.fromRole || 'user',
+            profileImage: null
+          };
         }
         
         acceptedConnections.push(connection);
       }
       
+      console.log("Loaded connections:", acceptedConnections);
       setConnections(acceptedConnections);
       setLoading(false);
     }, (err) => {

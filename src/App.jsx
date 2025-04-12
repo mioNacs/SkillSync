@@ -13,6 +13,7 @@ import Mentorship from './pages/Mentorship'
 import ExplorePage from './pages/ExplorePage'
 import NotFound from './pages/NotFound'
 import Notifications from './pages/Notifications'
+import Messages from './pages/Messages'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
 // New pages
@@ -42,6 +43,7 @@ function App() {
             } />
             <Route path="explore" element={<ExplorePage />} />
             <Route path="notifications" element={<Notifications />} />
+            <Route path="messages" element={<Messages />} />
             
             {/* New routes */}
             <Route path="offer-mentorship" element={<OfferMentorship />} />

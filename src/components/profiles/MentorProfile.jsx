@@ -5,6 +5,7 @@ import SkillForm from '../profile/SkillForm';
 import AvailabilityForm from '../profile/AvailabilityForm';
 import { useAuth } from '../../context/AuthContext';
 import { ConnectionButton } from '../ConnectionSystem';
+import ChatButton from '../chat/ChatButton';
 
 const MentorProfile = ({ user, isOwnProfile = false }) => {
   const { updateUserProfile, currentUser } = useAuth();
@@ -483,14 +484,22 @@ const MentorProfile = ({ user, isOwnProfile = false }) => {
       </div>
       
       {!isOwnProfile && (
-        <ConnectionButton 
-          targetUser={{ 
-            id: user.uid,
-            name: name,
-            role: 'mentor',
-            profileImage: profileImage
-          }} 
-        />
+        <div className="flex space-x-4">
+          <ConnectionButton 
+            targetUser={{ 
+              id: user.uid,
+              name: name,
+              role: 'mentor',
+              profileImage: profileImage
+            }} 
+          />
+          <ChatButton
+            otherUserId={user.uid}
+            otherUserName={name}
+            otherUserPhoto={profileImage}
+            buttonText="Message Mentor"
+          />
+        </div>
       )}
     </div>
   );
