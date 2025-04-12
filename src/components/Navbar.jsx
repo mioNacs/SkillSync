@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import useNotifications from '../hooks/useNotifications'
@@ -6,6 +6,12 @@ import { formatDistanceToNow } from 'date-fns'
 
 const Navbar = ({ toggleSidebar, scrolled }) => {
   const [showNotifications, setShowNotifications] = useState(false)
+  const [showProfileMenu, setShowProfileMenu] = useState(false)
+  const profileMenuRef = useRef(null)
+  const profileButtonRef = useRef(null)
+  const notificationsMenuRef = useRef(null)
+  const notificationsButtonRef = useRef(null)
+
   const { currentUser, userProfile, logout, isAuthenticated } = useAuth()
   const { 
     notifications,
@@ -19,6 +25,50 @@ const Navbar = ({ toggleSidebar, scrolled }) => {
   
   // Get unread notifications count
   const unreadCount = notifications ? notifications.filter(n => !n.isRead).length : 0
+  
+  // Handle clicks outside the profile menu to close it
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      // Handle profile menu outside clicks
+      if (
+        showProfileMenu &&
+        profileMenuRef.current && 
+        !profileMenuRef.current.contains(event.target) &&
+        profileButtonRef.current &&
+        !profileButtonRef.current.contains(event.target)
+      ) {
+        setShowProfileMenu(false)
+      }
+
+      // Handle notifications menu outside clicks
+      if (
+        showNotifications &&
+        notificationsMenuRef.current && 
+        !notificationsMenuRef.current.contains(event.target) &&
+        notificationsButtonRef.current &&
+        !notificationsButtonRef.current.contains(event.target)
+      ) {
+        setShowNotifications(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showProfileMenu, showNotifications])
+
+  // Toggle profile menu
+  const toggleProfileMenu = () => {
+    setShowProfileMenu(prev => !prev)
+    if (showNotifications) setShowNotifications(false)
+  }
+  
+  // Toggle notifications menu
+  const toggleNotifications = () => {
+    setShowNotifications(prev => !prev)
+    if (showProfileMenu) setShowProfileMenu(false)
+  }
   
   // Handle accepting a connection request
   const handleAcceptRequest = async (notification, e) => {
@@ -204,9 +254,12 @@ const Navbar = ({ toggleSidebar, scrolled }) => {
               <>
                 <div className="relative">
                   <button 
+                    ref={notificationsButtonRef}
                     className={`p-2 rounded-md ${scrolled ? 'hover:bg-gray-100 text-gray-700' : 'hover:bg-indigo-800 text-white'} transition-all duration-200`}
-                    onClick={() => setShowNotifications(!showNotifications)}
+                    onClick={toggleNotifications}
                     aria-label="Notifications"
+                    aria-expanded={showNotifications}
+                    aria-haspopup="true"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
@@ -217,7 +270,10 @@ const Navbar = ({ toggleSidebar, scrolled }) => {
                   </button>
                   
                   {showNotifications && (
-                    <div className="absolute right-0 mt-2 w-96 bg-gray-50 rounded-lg shadow-xl border overflow-hidden z-50 animate-slideDown">
+                    <div 
+                      ref={notificationsMenuRef}
+                      className="absolute right-0 mt-2 w-96 bg-gray-50 rounded-lg shadow-xl border overflow-hidden z-50 animate-slideDown"
+                    >
                       <div className="px-4 py-3 border-b bg-gray-100">
                         <h3 className="font-semibold text-gray-800">Notifications</h3>
                       </div>
@@ -235,7 +291,7 @@ const Navbar = ({ toggleSidebar, scrolled }) => {
                             <div className="mt-3">
                               <Link 
                                 to="/notifications" 
-                                onClick={() => setShowNotifications(false)}
+                                onClick={toggleNotifications}
                                 className="text-xs text-indigo-600 hover:underline"
                               >
                                 View all notifications
@@ -296,16 +352,22 @@ const Navbar = ({ toggleSidebar, scrolled }) => {
                         )}
                       </div>
                       
-                      <Link to="/notifications" onClick={() => setShowNotifications(false)} className="block py-3 px-4 text-center border-t text-indigo-600 hover:bg-indigo-50 transition-colors">
+                      <Link to="/notifications" onClick={toggleNotifications} className="block py-3 px-4 text-center border-t text-indigo-600 hover:bg-indigo-50 transition-colors">
                         View All Notifications
                       </Link>
                     </div>
                   )}
                 </div>
                 
-                <div className="relative group">
-                  <Link to="/profile" className="flex items-center space-x-1">
-                    <div className={`h-8 w-8 rounded-full ${scrolled ? 'bg-indigo-100 text-indigo-700' : 'bg-indigo-500 text-white'} flex items-center justify-center overflow-hidden transition-all duration-300 ease-in-out group-hover:ring-2 group-hover:ring-indigo-300`}>
+                <div className="relative">
+                  <button
+                    ref={profileButtonRef}
+                    onClick={toggleProfileMenu}
+                    className="flex items-center space-x-1 focus:outline-none"
+                    aria-expanded={showProfileMenu}
+                    aria-haspopup="true"
+                  >
+                    <div className={`h-8 w-8 rounded-full ${scrolled ? 'bg-indigo-100 text-indigo-700' : 'bg-indigo-500 text-white'} flex items-center justify-center overflow-hidden transition-all duration-300 ease-in-out ${showProfileMenu ? 'ring-2 ring-indigo-300' : ''}`}>
                       {userProfile?.profileImage ? (
                         <img 
                           src={userProfile.profileImage} 
@@ -325,30 +387,46 @@ const Navbar = ({ toggleSidebar, scrolled }) => {
                         </span>
                       )}
                     </div>
-                  </Link>
+                  </button>
                   
-                  <div className="hidden group-hover:block absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg overflow-hidden z-50 animate-fadeIn border border-gray-200">
-                    <div className="p-3 border-b">
-                      <p className="text-sm font-medium text-gray-800 truncate">
-                        {userProfile?.name || currentUser?.displayName || 'User'}
-                      </p>
-                      <p className="text-xs text-gray-500 truncate">{currentUser?.email}</p>
+                  {showProfileMenu && (
+                    <div 
+                      ref={profileMenuRef}
+                      className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg overflow-hidden z-50 animate-fadeIn border border-gray-200"
+                    >
+                      <div className="p-3 border-b">
+                        <p className="text-sm font-medium text-gray-800 truncate">
+                          {userProfile?.name || currentUser?.displayName || 'User'}
+                        </p>
+                        <p className="text-xs text-gray-500 truncate">{currentUser?.email}</p>
+                      </div>
+                      <div className="py-1">
+                        <Link 
+                          to="/profile" 
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          onClick={() => setShowProfileMenu(false)}
+                        >
+                          Your Profile
+                        </Link>
+                        <Link 
+                          to="/profile/settings" 
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          onClick={() => setShowProfileMenu(false)}
+                        >
+                          Settings
+                        </Link>
+                        <button 
+                          onClick={() => {
+                            setShowProfileMenu(false);
+                            handleLogout();
+                          }}
+                          className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        >
+                          Sign out
+                        </button>
+                      </div>
                     </div>
-                    <div className="py-1">
-                      <Link to="/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                        Your Profile
-                      </Link>
-                      <Link to="/profile/settings" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                        Settings
-                      </Link>
-                      <button 
-                        onClick={handleLogout}
-                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        Sign out
-                      </button>
-                    </div>
-                  </div>
+                  )}
                 </div>
               </>
             ) : (

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { formatDistanceToNow } from 'date-fns';
+import { useChatContext } from '../../context/ChatContext';
 import useChat from '../../hooks/useChat';
 import { useAuth } from '../../context/AuthContext';
 
@@ -8,7 +9,9 @@ const ChatInterface = ({ otherUserId, otherUserName, otherUserPhoto, onClose }) 
   const [newMessage, setNewMessage] = useState('');
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const { unreadMessagesCount } = useChatContext();
   
+  // Use the direct hook for this specific chat
   const {
     messages,
     chatLoading,
@@ -30,6 +33,13 @@ const ChatInterface = ({ otherUserId, otherUserName, otherUserPhoto, onClose }) 
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
+  
+  // Mark messages as read when chat opens
+  useEffect(() => {
+    if (!chatLoading && messages.length > 0) {
+      markMessagesAsRead();
+    }
+  }, [chatLoading, messages, markMessagesAsRead]);
   
   // Format timestamp
   const formatTime = (timestamp) => {

@@ -11,14 +11,15 @@ const ExplorePage = () => {
   const [selectedRole, setSelectedRole] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   
-  // Fetch users based on role and search query
-  const { users: searchResults, loading: searchLoading, error: searchError } = 
-    searchQuery 
-      ? useSearchUsers(searchQuery, selectedRole !== 'all' ? selectedRole : null) 
-      : { users: [], loading: false, error: null };
+  // Fetch users based on role and search query - call hooks unconditionally
+  const { users: searchResults, loading: searchLoading, error: searchError } = useSearchUsers(
+    searchQuery, 
+    selectedRole !== 'all' ? selectedRole : null
+  );
       
-  const { users: allUsers, loading: usersLoading, error: usersError } = 
-    useUsers(selectedRole !== 'all' ? selectedRole : null);
+  const { users: allUsers, loading: usersLoading, error: usersError } = useUsers(
+    selectedRole !== 'all' ? selectedRole : null
+  );
     
   // Determine which users to display
   const filteredUsers = searchQuery ? searchResults : allUsers;

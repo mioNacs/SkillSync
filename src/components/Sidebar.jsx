@@ -1,9 +1,12 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useState, useEffect } from 'react'
+import { useChatContext } from '../context/ChatContext'
 
 const Sidebar = ({ isOpen }) => {
   const location = useLocation()
   const { currentUser, userProfile, isAuthenticated } = useAuth()
+  const { unreadMessagesCount } = useChatContext()
   
   // Get user role for conditional rendering
   const userRole = userProfile?.role || 'member'
@@ -100,8 +103,15 @@ const Sidebar = ({ isOpen }) => {
               <ul className="space-y-1">
                 {navItems.map((item) => {
                   const isActive = location.pathname === item.path;
+                  const isMessages = item.name === 'Messages';
+                  
                   return (
-                    <li key={item.name}>
+                    <li key={item.name} className="relative">
+                      {isMessages && unreadMessagesCount > 0 && (
+                        <span className="absolute -top-2 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-medium text-white z-10 animate-pulse">
+                          {unreadMessagesCount}
+                        </span>
+                      )}
                       <Link 
                         to={item.path} 
                         className={`flex items-center p-3 rounded-lg text-sm transition-all duration-200 ${

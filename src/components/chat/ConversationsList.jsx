@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import useChat from '../../hooks/useChat';
+import { useChatContext } from '../../context/ChatContext';
 import ChatInterface from './ChatInterface';
 import { useAuth } from '../../context/AuthContext';
 
 const ConversationsList = () => {
   const [activeConversation, setActiveConversation] = useState(null);
-  const { conversations, conversationsLoading, chatError } = useChat();
+  const { conversations, conversationsLoading, chatError } = useChatContext();
   const { currentUser } = useAuth();
 
   // Format timestamp for last message

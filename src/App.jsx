@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import './App.css'
 import { AuthProvider } from './context/AuthContext'
+import ChatProvider from './context/ChatContext'
 
 // Layouts
 import MainLayout from './layouts/MainLayout'
@@ -24,34 +25,44 @@ import ErrorBoundary from './components/ErrorBoundary'
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <Routes>
-          {/* Auth Routes */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
-          
-          {/* Main Layout Routes */}
-          <Route path="/" element={<MainLayout />}>
-            <Route index element={<Home />} />
-            <Route path="profile" element={<Profile />} />
-            <Route path="profile/:userId" element={<Profile />} />
-            <Route path="projects" element={<Projects />} />
-            <Route path="mentorship" element={
-              <ErrorBoundary>
-                <Mentorship />
-              </ErrorBoundary>
-            } />
-            <Route path="explore" element={<ExplorePage />} />
-            <Route path="notifications" element={<Notifications />} />
-            <Route path="messages" element={<Messages />} />
+      <ChatProvider>
+        <Router>
+          <Routes>
+            {/* Auth Routes */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
             
-            {/* New routes */}
-            <Route path="offer-mentorship" element={<OfferMentorship />} />
-            
-            <Route path="*" element={<NotFound />} />
-          </Route>
-        </Routes>
-      </Router>
+            {/* Main Layout Routes */}
+            <Route path="/" element={<MainLayout />}>
+              <Route index element={<Home />} />
+              <Route path="profile" element={<Profile />} />
+              <Route path="profile/:userId" element={<Profile />} />
+              <Route path="projects" element={<Projects />} />
+              <Route path="mentorship" element={
+                <ErrorBoundary>
+                  <Mentorship />
+                </ErrorBoundary>
+              } />
+              <Route path="explore" element={
+                <ErrorBoundary>
+                  <ExplorePage />
+                </ErrorBoundary>
+              } />
+              <Route path="notifications" element={<Notifications />} />
+              <Route path="messages" element={
+                <ErrorBoundary>
+                  <Messages />
+                </ErrorBoundary>
+              } />
+              
+              {/* New routes */}
+              <Route path="offer-mentorship" element={<OfferMentorship />} />
+              
+              <Route path="*" element={<NotFound />} />
+            </Route>
+          </Routes>
+        </Router>
+      </ChatProvider>
     </AuthProvider>
   )
 }

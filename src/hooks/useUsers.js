@@ -107,10 +107,11 @@ export const useUsers = (role = null, limit = 50) => {
 // Hook to search users by skills, name or bio
 export const useSearchUsers = (searchTerm, role = null, limit = 50) => {
   const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    // Don't trigger the search if the search term is empty
     if (!searchTerm || searchTerm.trim() === '') {
       setUsers([]);
       setLoading(false);

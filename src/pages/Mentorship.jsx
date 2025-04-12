@@ -9,10 +9,8 @@ const Mentorship = () => {
   const [experienceFilter, setExperienceFilter] = useState('any')
   const [allSkills, setAllSkills] = useState([])
   
-  // Fetch mentors from Firestore using the useUsers hook
-  const { users: mentorsFromSearch, loading: searchLoading, error: searchError } = 
-    searchQuery ? useSearchUsers(searchQuery, 'mentor') : { users: [], loading: false, error: null }
-  
+  // Fetch mentors from Firestore using the useUsers hook - call hooks unconditionally
+  const { users: mentorsFromSearch, loading: searchLoading, error: searchError } = useSearchUsers(searchQuery, 'mentor')
   const { users: mentors, loading: mentorsLoading, error: mentorsError } = useUsers('mentor')
   
   // Determine which mentors to display based on search state
