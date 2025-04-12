@@ -15,6 +15,53 @@ import {
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 
+// Import the createNotification function directly to avoid circular dependencies
+const createConnectionNotification = async (requestId, toUserId, fromUserId, fromRole, toRole) => {
+  try {
+    // Get sender info
+    const senderDoc = await getDoc(doc(db, 'users', fromUserId));
+    if (!senderDoc.exists()) {
+      throw new Error('Sender user not found');
+    }
+    const senderData = senderDoc.data();
+
+    // Determine notification message based on roles
+    let title, description;
+    if (fromRole === 'learner' && toRole === 'mentor') {
+      title = 'New mentorship request';
+      description = `${senderData.name} has requested mentorship from you`;
+    } else if (fromRole === 'mentor' && toRole === 'learner') {
+      title = 'New mentorship invitation';
+      description = `${senderData.name} has invited you to connect as a mentee`;
+    } else {
+      title = 'New connection request';
+      description = `${senderData.name} wants to connect with you`;
+    }
+
+    // Create the notification
+    const notificationData = {
+      userId: toUserId,
+      type: 'connection',
+      title,
+      description,
+      requestId,
+      fromId: fromUserId,
+      fromRole,
+      toRole,
+      senderName: senderData.name,
+      senderProfileImage: senderData.profileImage,
+      isRead: false,
+      createdAt: serverTimestamp()
+    };
+
+    await addDoc(collection(db, 'notifications'), notificationData);
+    return true;
+  } catch (err) {
+    console.error('Error creating connection notification:', err);
+    throw err;
+  }
+};
+
 const useRequests = () => {
   const { currentUser, userProfile } = useAuth();
   const [incomingRequests, setIncomingRequests] = useState([]);
@@ -67,7 +114,18 @@ const useRequests = () => {
         message: message || ''
       };
 
-      await addDoc(collection(db, 'requests'), requestData);
+      // Add the request to Firestore
+      const requestRef = await addDoc(collection(db, 'requests'), requestData);
+      
+      // Create a notification for the recipient
+      await createConnectionNotification(
+        requestRef.id,
+        toUserId,
+        currentUser.uid,
+        userProfile.role,
+        toRole
+      );
+      
       return true;
     } catch (err) {
       setError(err.message);
@@ -79,10 +137,32 @@ const useRequests = () => {
   const acceptRequest = async (requestId) => {
     try {
       const requestRef = doc(db, 'requests', requestId);
+      const requestDoc = await getDoc(requestRef);
+      
+      if (!requestDoc.exists()) {
+        throw new Error('Request not found');
+      }
+      
+      const requestData = requestDoc.data();
+      
       await updateDoc(requestRef, {
         status: 'accepted',
         responseTimestamp: serverTimestamp()
       });
+      
+      // Create acceptance notification for the sender
+      const notificationData = {
+        userId: requestData.fromId,
+        type: 'connection_accepted',
+        title: 'Connection request accepted',
+        description: `Your connection request has been accepted`,
+        requestId,
+        isRead: false,
+        createdAt: serverTimestamp()
+      };
+      
+      await addDoc(collection(db, 'notifications'), notificationData);
+      
       return true;
     } catch (err) {
       setError(err.message);

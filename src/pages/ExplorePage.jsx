@@ -1,79 +1,37 @@
-import { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { db } from '../firebase';
+import { useUsers, useSearchUsers } from '../hooks/useUsers';
+import { useAuth } from '../context/AuthContext';
 
 const ExplorePage = () => {
+  // Get current user for comparison
+  const { currentUser } = useAuth();
+  
   // State management
-  const [users, setUsers] = useState([]);
-  const [filteredUsers, setFilteredUsers] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [selectedRole, setSelectedRole] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
-
-  // Fetch users from Firestore
-  useEffect(() => {
-    const fetchUsers = async () => {
-      setIsLoading(true);
-      try {
-        const usersRef = collection(db, 'users');
-        const q = query(usersRef, limit(50)); // Limiting to 50 users for performance
-        const querySnapshot = await getDocs(q);
-        
-        const usersData = [];
-        querySnapshot.forEach((doc) => {
-          const userData = doc.data();
-          usersData.push({
-            id: doc.id,
-            ...userData
-          });
-        });
-        
-        setUsers(usersData);
-        setFilteredUsers(usersData);
-        setIsLoading(false);
-      } catch (err) {
-        console.error('Error fetching users:', err);
-        setError('Failed to load users. Please try again later.');
-        setIsLoading(false);
-      }
-    };
-
-    fetchUsers();
-  }, []);
-
-  // Filter users based on role and search query
-  useEffect(() => {
-    if (!users.length) return;
-
-    let result = [...users];
+  
+  // Fetch users based on role and search query
+  const { users: searchResults, loading: searchLoading, error: searchError } = 
+    searchQuery 
+      ? useSearchUsers(searchQuery, selectedRole !== 'all' ? selectedRole : null) 
+      : { users: [], loading: false, error: null };
+      
+  const { users: allUsers, loading: usersLoading, error: usersError } = 
+    useUsers(selectedRole !== 'all' ? selectedRole : null);
     
-    // Filter by role
-    if (selectedRole !== 'all') {
-      result = result.filter(user => user.role?.toLowerCase() === selectedRole);
-    }
-    
-    // Filter by search query
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter(user => 
-        user.name?.toLowerCase().includes(query) || 
-        user.bio?.toLowerCase().includes(query) ||
-        user.skills?.some(skill => skill.name?.toLowerCase().includes(query) || 
-                           skill.toLowerCase?.includes(query))
-      );
-    }
-    
-    setFilteredUsers(result);
-  }, [selectedRole, searchQuery, users]);
+  // Determine which users to display
+  const filteredUsers = searchQuery ? searchResults : allUsers;
+  const isLoading = searchQuery ? searchLoading : usersLoading;
+  const error = searchQuery ? searchError : usersError;
 
   // Function to get role badge color
   const getRoleBadgeColor = (role) => {
-    switch(role?.toLowerCase()) {
+    switch((role || 'member')?.toLowerCase()) {
       case 'mentor': return 'bg-purple-100 text-purple-800';
-      case 'member': return 'bg-blue-100 text-blue-800';
+      case 'learner': return 'bg-blue-100 text-blue-800';
       case 'recruiter': return 'bg-green-100 text-green-800';
+      case 'member': return 'bg-blue-100 text-blue-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -81,6 +39,19 @@ const ExplorePage = () => {
   // Function to check if a mentor is available
   const isAvailable = (user) => {
     return user.role?.toLowerCase() === 'mentor' && user.available === true;
+  };
+
+  // Normalize the role for display
+  const normalizeRole = (role) => {
+    if (!role) return 'Member';
+    
+    // Handle the case where role might be null or undefined
+    const normalizedRole = role.toLowerCase();
+    
+    // Map 'member' to 'learner' for profile viewing
+    if (normalizedRole === 'member') return 'Learner';
+    
+    return role.charAt(0).toUpperCase() + role.slice(1).toLowerCase();
   };
 
   return (
@@ -114,7 +85,8 @@ const ExplorePage = () => {
           >
             <option value="all">All Roles</option>
             <option value="mentor">Mentors</option>
-            <option value="member">Learners</option>
+            <option value="learner">Learners</option>
+            <option value="member">Members</option>
             <option value="recruiter">Recruiters</option>
           </select>
         </div>
@@ -184,7 +156,7 @@ const ExplorePage = () => {
                             </p>
                           </div>
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleBadgeColor(user.role)}`}>
-                            {user.role || 'Member'}
+                            {normalizeRole(user.role)}
                           </span>
                         </div>
                       </div>
@@ -198,7 +170,7 @@ const ExplorePage = () => {
                       <div className="mt-4">
                         <h4 className="text-sm font-medium text-gray-700 mb-2">Skills</h4>
                         <div className="flex flex-wrap gap-2">
-                          {user.skills.map((skill, index) => (
+                          {user.skills.slice(0, 5).map((skill, index) => (
                             <span 
                               key={index} 
                               className="bg-indigo-100 text-indigo-800 text-xs font-medium px-2.5 py-0.5 rounded"
@@ -206,6 +178,11 @@ const ExplorePage = () => {
                               {typeof skill === 'object' ? skill.name : skill}
                             </span>
                           ))}
+                          {user.skills.length > 5 && (
+                            <span className="bg-gray-100 text-gray-800 text-xs px-2 py-0.5 rounded">
+                              +{user.skills.length - 5} more
+                            </span>
+                          )}
                         </div>
                       </div>
                     )}
@@ -215,7 +192,7 @@ const ExplorePage = () => {
                         to={`/profile/${user.id}`}
                         className="text-indigo-600 hover:text-indigo-800 font-medium text-sm flex items-center"
                       >
-                        View Profile
+                        {currentUser && currentUser.uid === user.id ? 'Edit Profile' : 'View Profile'}
                         <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path>
                         </svg>

@@ -1,12 +1,149 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import useNotifications from '../hooks/useNotifications'
+import { formatDistanceToNow } from 'date-fns'
 
 const Navbar = ({ toggleSidebar, scrolled }) => {
   const [showNotifications, setShowNotifications] = useState(false)
   const { currentUser, userProfile, logout, isAuthenticated } = useAuth()
+  const { 
+    notifications,
+    loading: notificationsLoading,
+    error: notificationsError,
+    markAsRead,
+    acceptConnectionRequest,
+    declineConnectionRequest
+  } = useNotifications()
   const navigate = useNavigate()
   
+  // Get unread notifications count
+  const unreadCount = notifications ? notifications.filter(n => !n.isRead).length : 0
+  
+  // Handle accepting a connection request
+  const handleAcceptRequest = async (notification, e) => {
+    e.stopPropagation()
+    try {
+      await acceptConnectionRequest(notification.id, notification.requestId)
+    } catch (error) {
+      console.error('Error accepting request:', error)
+    }
+  }
+  
+  // Handle declining a connection request
+  const handleDeclineRequest = async (notification, e) => {
+    e.stopPropagation()
+    try {
+      await declineConnectionRequest(notification.id, notification.requestId)
+    } catch (error) {
+      console.error('Error declining request:', error)
+    }
+  }
+  
+  // Handle viewing a project
+  const handleViewProject = (projectId) => {
+    setShowNotifications(false)
+    navigate(`/projects/${projectId}`)
+  }
+  
+  // Handle viewing a profile
+  const handleViewProfile = (userId) => {
+    setShowNotifications(false)
+    navigate(`/profile/${userId}`)
+  }
+  
+  // Mark notification as read on click
+  const handleNotificationClick = async (notification) => {
+    if (!notification.isRead) {
+      try {
+        await markAsRead(notification.id)
+      } catch (error) {
+        console.error('Error marking notification as read:', error)
+      }
+    }
+  }
+  
+  const getIconForType = (type) => {
+    switch (type) {
+      case 'connection':
+      case 'connection_accepted':
+        return (
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+        )
+      case 'project':
+        return (
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          </svg>
+        )
+      case 'verification':
+        return (
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        )
+      default:
+        return (
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+          </svg>
+        )
+    }
+  }
+  
+  const getColorForType = (type) => {
+    switch (type) {
+      case 'connection': 
+      case 'connection_accepted': 
+        return 'bg-indigo-100 text-indigo-600'
+      case 'project': 
+        return 'bg-purple-100 text-purple-600'
+      case 'verification': 
+        return 'bg-green-100 text-green-600'
+      default: 
+        return 'bg-gray-100 text-gray-600'
+    }
+  }
+  
+  // Get notification actions based on type
+  const getNotificationActions = (notification) => {
+    switch (notification.type) {
+      case 'connection':
+        return [
+          { 
+            label: 'Accept', 
+            primary: true, 
+            action: (e) => handleAcceptRequest(notification, e) 
+          },
+          { 
+            label: 'Decline', 
+            primary: false, 
+            action: (e) => handleDeclineRequest(notification, e) 
+          }
+        ]
+      case 'project':
+        return [
+          { 
+            label: 'View', 
+            primary: true, 
+            action: () => handleViewProject(notification.projectId) 
+          }
+        ]
+      case 'connection_accepted':
+        return [
+          { 
+            label: 'View Profile', 
+            primary: true, 
+            action: () => handleViewProfile(notification.fromId) 
+          }
+        ]
+      default:
+        return []
+    }
+  }
+
   const handleLogout = async () => {
     try {
       await logout()
@@ -74,7 +211,9 @@ const Navbar = ({ toggleSidebar, scrolled }) => {
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                     </svg>
-                    <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
+                    {unreadCount > 0 && (
+                      <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
+                    )}
                   </button>
                   
                   {showNotifications && (
@@ -84,61 +223,77 @@ const Navbar = ({ toggleSidebar, scrolled }) => {
                       </div>
                       
                       <div className="max-h-[70vh] overflow-y-auto scrollbar-thin">
-                        <div className="p-4 border-b hover:bg-white transition-colors duration-200 cursor-pointer flex items-start">
-                          <div className="h-10 w-10 rounded-full bg-indigo-100 flex-shrink-0 flex items-center justify-center text-indigo-600 mr-3">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                            </svg>
+                        {notificationsLoading ? (
+                          <div className="flex justify-center items-center p-8">
+                            <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-solid border-indigo-500 border-r-transparent"></div>
+                            <span className="ml-2 text-gray-600">Loading...</span>
                           </div>
-                          <div className="flex-1">
-                            <div className="flex justify-between items-start">
-                              <p className="text-sm font-medium text-gray-800">New mentor request</p>
-                              <span className="text-xs bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full">New</span>
+                        ) : notificationsError ? (
+                          <div className="p-4 text-center">
+                            <p className="text-sm text-gray-700">Error loading notifications</p>
+                            <p className="text-xs text-gray-500 mt-1">Please try again later</p>
+                            <div className="mt-3">
+                              <Link 
+                                to="/notifications" 
+                                onClick={() => setShowNotifications(false)}
+                                className="text-xs text-indigo-600 hover:underline"
+                              >
+                                View all notifications
+                              </Link>
                             </div>
-                            <p className="text-xs text-gray-600 mt-1">Sarah Williams wants to connect with you</p>
-                            <div className="flex justify-between items-center mt-2">
-                              <p className="text-xs text-gray-400">10 minutes ago</p>
-                              <div className="flex space-x-1">
-                                <button className="text-xs bg-indigo-600 text-white px-2 py-1 rounded hover:bg-indigo-700 transition-colors">Accept</button>
-                                <button className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded hover:bg-gray-300 transition-colors">Decline</button>
+                          </div>
+                        ) : notifications.length === 0 ? (
+                          <div className="p-8 text-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mx-auto text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                            </svg>
+                            <p className="mt-2 text-gray-600">No notifications yet</p>
+                          </div>
+                        ) : (
+                          notifications.slice(0, 3).map(notification => {
+                            const actions = getNotificationActions(notification);
+                            
+                            return (
+                              <div 
+                                key={notification.id} 
+                                className="p-4 border-b hover:bg-white transition-colors duration-200 cursor-pointer flex items-start"
+                                onClick={() => handleNotificationClick(notification)}
+                              >
+                                <div className={`h-10 w-10 rounded-full ${getColorForType(notification.type)} flex-shrink-0 flex items-center justify-center mr-3`}>
+                                  {getIconForType(notification.type)}
+                                </div>
+                                <div className="flex-1">
+                                  <div className="flex justify-between items-start">
+                                    <p className="text-sm font-medium text-gray-800">{notification.title}</p>
+                                    {!notification.isRead && (
+                                      <span className="text-xs bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full">New</span>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-gray-600 mt-1">{notification.description}</p>
+                                  <div className="flex justify-between items-center mt-2">
+                                    <p className="text-xs text-gray-400">{notification.time}</p>
+                                    {actions.length > 0 && (
+                                      <div className="flex space-x-1">
+                                        {actions.map((action, i) => (
+                                          <button 
+                                            key={i}
+                                            onClick={action.action}
+                                            className={`text-xs ${action.primary 
+                                              ? 'bg-indigo-600 text-white hover:bg-indigo-700' 
+                                              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                            } px-2 py-1 rounded transition-colors`}
+                                          >
+                                            {action.label}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="p-4 border-b hover:bg-white transition-colors duration-200 cursor-pointer flex items-start">
-                          <div className="h-10 w-10 rounded-full bg-purple-100 flex-shrink-0 flex items-center justify-center text-purple-600 mr-3">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                            </svg>
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex justify-between items-start">
-                              <p className="text-sm font-medium text-gray-800">Project invitation</p>
-                              <span className="text-xs bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-full">New</span>
-                            </div>
-                            <p className="text-xs text-gray-600 mt-1">You've been invited to join "AI Learning Platform"</p>
-                            <div className="flex justify-between items-center mt-2">
-                              <p className="text-xs text-gray-400">1 hour ago</p>
-                              <div className="flex space-x-1">
-                                <button className="text-xs bg-indigo-600 text-white px-2 py-1 rounded hover:bg-indigo-700 transition-colors">View</button>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="p-4 border-b hover:bg-white transition-colors duration-200 cursor-pointer flex items-start">
-                          <div className="h-10 w-10 rounded-full bg-green-100 flex-shrink-0 flex items-center justify-center text-green-600 mr-3">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-sm font-medium text-gray-800">Profile verification complete</p>
-                            <p className="text-xs text-gray-600 mt-1">Your profile has been verified and is now visible to mentors</p>
-                            <p className="text-xs text-gray-400 mt-2">2 hours ago</p>
-                          </div>
-                        </div>
+                            );
+                          })
+                        )}
                       </div>
                       
                       <Link to="/notifications" onClick={() => setShowNotifications(false)} className="block py-3 px-4 text-center border-t text-indigo-600 hover:bg-indigo-50 transition-colors">

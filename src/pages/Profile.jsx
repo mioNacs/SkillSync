@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate, useParams } from 'react-router-dom'
 import ProfileImage from '../components/profile/ProfileImage'
@@ -9,6 +9,10 @@ import EducationForm from '../components/profile/EducationForm'
 import ProfileRouter from '../components/profiles/ProfileRouter'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
+import { useProfile } from '../hooks/useUsers'
+import MentorProfile from '../components/profiles/MentorProfile'
+import LearnerProfile from '../components/profiles/LearnerProfile'
+import RecruiterProfile from '../components/profiles/RecruiterProfile'
 
 const Profile = () => {
   const [activeTab, setActiveTab] = useState('skills')
@@ -40,38 +44,8 @@ const Profile = () => {
   
   const isViewingOtherProfile = userId && userId !== currentUser?.uid;
 
-  // Fetch specific user profile if viewing someone else's profile
-  useEffect(() => {
-    const fetchUserProfile = async () => {
-      if (!userId || userId === currentUser?.uid) {
-        setViewedUserProfile(null);
-        return;
-      }
-      
-      setIsLoading(true);
-      try {
-        const userDocRef = doc(db, 'users', userId);
-        const userDoc = await getDoc(userDocRef);
-        
-        if (userDoc.exists()) {
-          setViewedUserProfile({
-            ...userDoc.data(),
-            uid: userDoc.id
-          });
-        } else {
-          setError('User not found');
-          navigate('/explore', { replace: true });
-        }
-      } catch (err) {
-        console.error('Error fetching user profile:', err);
-        setError('Error loading profile. Please try again later.');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    fetchUserProfile();
-  }, [userId, currentUser?.uid, navigate]);
+  // Fetch user profile data
+  const { profile, loading } = useProfile(userId);
 
   // Redirect if not logged in
   useEffect(() => {
@@ -319,9 +293,40 @@ const Profile = () => {
     </form>
   )
 
+  // Handle rendering the appropriate profile component based on role
+  const renderProfileByRole = () => {
+    if (!profile) return null;
+
+    const role = profile.role?.toLowerCase();
+    
+    // isOwnProfile should be TRUE when the user is viewing their OWN profile
+    // and FALSE when viewing someone else's profile
+    const isOwnProfileView = !isViewingOtherProfile;
+    
+    switch (role) {
+      case 'mentor':
+        return <MentorProfile user={profile} isOwnProfile={isOwnProfileView} />;
+      case 'learner':
+      case 'member': // Treat 'member' role as 'learner'
+        return <LearnerProfile user={profile} isOwnProfile={isOwnProfileView} />;
+      case 'recruiter':
+        return <RecruiterProfile user={profile} isOwnProfile={isOwnProfileView} />;
+      default:
+        // For users without a specified role, default to learner profile
+        return <LearnerProfile user={profile} isOwnProfile={isOwnProfileView} />;
+    }
+  };
+
+  // If user is not logged in, redirect to login page
+  useEffect(() => {
+    if (!currentUser && !loading) {
+      navigate('/login');
+    }
+  }, [currentUser, loading, navigate]);
+
   // If viewing someone else's profile, render their profile
   if (isViewingOtherProfile) {
-    if (isLoading) {
+    if (loading) {
       return (
         <div className="flex justify-center items-center h-screen">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
@@ -340,10 +345,10 @@ const Profile = () => {
       );
     }
     
-    if (viewedUserProfile) {
+    if (profile) {
       return (
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <ProfileRouter user={viewedUserProfile} />
+          {renderProfileByRole()}
         </div>
       );
     }

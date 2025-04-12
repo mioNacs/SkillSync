@@ -5,31 +5,117 @@ import SkillCard from '../components/SkillCard'
 import ProjectCard from '../components/ProjectCard'
 import MentorCard from '../components/MentorCard'
 import Dashboard from '../components/Dashboard'
+import { useProjects } from '../hooks/useProjects'
+import { useUsers } from '../hooks/useUsers'
+import { collection, query, where, getDocs, getCountFromServer } from 'firebase/firestore'
+import { db } from '../firebase'
 
 const Home = () => {
   const [isLoaded, setIsLoaded] = useState(false)
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, userProfile } = useAuth()
+  
+  // Stats state variables
+  const [activeProjects, setActiveProjects] = useState(0)
+  const [registeredMentors, setRegisteredMentors] = useState(0)
+  const [skillsTracked, setSkillsTracked] = useState(0)
+  const [collaborations, setCollaborations] = useState(0)
+  const [statsLoading, setStatsLoading] = useState(true)
+  
+  // Fetch recommended projects - limiting to 2 recent projects
+  const { projects: allProjects, loading: projectsLoading } = useProjects(null, 2)
+  
+  // Fetch mentors - limiting to 2 mentors
+  const { users: mentors, loading: mentorsLoading } = useUsers('mentor', 2)
+  
+  // Get user skills for potentially filtering recommended content
+  const userSkills = userProfile?.skills || []
+  
+  // Fetch actual stats from Firestore
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        // Count active projects
+        const projectsQuery = query(collection(db, 'projects'));
+        const projectsSnapshot = await getCountFromServer(projectsQuery);
+        setActiveProjects(projectsSnapshot.data().count);
+        
+        // Count registered mentors
+        const mentorsQuery = query(collection(db, 'users'), where('role', '==', 'mentor'));
+        const mentorsSnapshot = await getCountFromServer(mentorsQuery);
+        setRegisteredMentors(mentorsSnapshot.data().count);
+        
+        // Count skills - aggregate unique skills from all users
+        const usersSnapshot = await getDocs(collection(db, 'users'));
+        const uniqueSkills = new Set();
+        
+        usersSnapshot.forEach(doc => {
+          const userData = doc.data();
+          if (userData.skills && Array.isArray(userData.skills)) {
+            userData.skills.forEach(skill => {
+              if (typeof skill === 'string') {
+                uniqueSkills.add(skill);
+              } else if (skill && skill.name) {
+                uniqueSkills.add(skill.name);
+              }
+            });
+          }
+        });
+        
+        setSkillsTracked(uniqueSkills.size);
+        
+        // Count collaborations - this could be based on connections, accepted projects, etc.
+        const collaborationsQuery = query(
+          collection(db, 'requests'), 
+          where('status', '==', 'accepted')
+        );
+        const collaborationsSnapshot = await getCountFromServer(collaborationsQuery);
+        setCollaborations(collaborationsSnapshot.data().count);
+        
+        setStatsLoading(false);
+      } catch (error) {
+        console.error('Error fetching stats:', error);
+        setStatsLoading(false);
+      }
+    };
+    
+    fetchStats();
+  }, []);
   
   useEffect(() => {
-    setIsLoaded(true)
-  }, [])
+    // Set loaded when data is ready or after 1 second to prevent blank screen
+    const timer = setTimeout(() => setIsLoaded(true), 1000)
+    if (!projectsLoading && !mentorsLoading && !statsLoading) {
+      setIsLoaded(true)
+      clearTimeout(timer)
+    }
+    return () => clearTimeout(timer)
+  }, [projectsLoading, mentorsLoading, statsLoading])
   
   // If user is not authenticated, render the guest Dashboard
   if (!isAuthenticated) {
     return <Dashboard />
   }
   
-  // Sample data - would come from API in real app
-  const recommendedProjects = [
-    { id: 1, title: 'AI Learning Platform', skills: ['React', 'Node.js', 'Machine Learning'], owner: 'Jane Doe', members: 5 },
-    { id: 2, title: 'Virtual Reality Classroom', skills: ['Unity', 'C#', '3D Modeling'], owner: 'John Smith', members: 3 },
-  ]
+  // Transform projects data for ProjectCard component
+  const recommendedProjects = allProjects.map(project => ({
+    id: project.id,
+    title: project.name || project.title,
+    skills: project.technologies || [],
+    owner: project.creator?.name || 'Anonymous',
+    members: project.teamSize || project.collaborators?.length || 1
+  }))
   
-  const recommendedMentors = [
-    { id: 1, name: 'Dr. Emily Chen', skills: ['AI', 'Python', 'Data Science'], experience: '10+ years', rating: 4.9 },
-    { id: 2, name: 'Mark Johnson', skills: ['Web Development', 'React', 'JavaScript'], experience: '8 years', rating: 4.7 },
-  ]
+  // Transform mentors data for MentorCard component
+  const recommendedMentors = mentors.map(mentor => ({
+    id: mentor.id,
+    name: mentor.name,
+    skills: mentor.skills?.map(skill => typeof skill === 'string' ? skill : skill.name).slice(0, 3) || [],
+    experience: mentor.yearsOfExperience ? `${mentor.yearsOfExperience}+ years` : 'Experienced',
+    rating: mentor.rating || 4.5,
+    profileImage: mentor.profileImage
+  }))
   
+  // Static trending skills - in a real app, you might fetch this from analytics data
   const trendingSkills = [
     { id: 1, name: 'React', category: 'Frontend', popularity: 95 },
     { id: 2, name: 'Machine Learning', category: 'AI', popularity: 92 },
@@ -37,12 +123,18 @@ const Home = () => {
     { id: 4, name: 'Docker', category: 'DevOps', popularity: 87 },
   ]
 
+  // Use the real stats from Firestore
   const stats = [
-    { label: 'Active Projects', value: '1,248' },
-    { label: 'Registered Mentors', value: '483' },
-    { label: 'Skills Tracked', value: '320+' },
-    { label: 'Successful Collaborations', value: '2,589' },
+    { label: 'Active Projects', value: statsLoading ? '...' : activeProjects.toLocaleString() },
+    { label: 'Registered Mentors', value: statsLoading ? '...' : registeredMentors.toLocaleString() },
+    { label: 'Skills Tracked', value: statsLoading ? '...' : (skillsTracked > 0 ? skillsTracked.toLocaleString() + '+' : '0') },
+    { label: 'Successful Collaborations', value: statsLoading ? '...' : collaborations.toLocaleString() },
   ]
+
+  // Render user profile panels based on actual data
+  const hasSkills = userSkills.length > 0
+  const hasProjects = userProfile?.projects?.length > 0
+  const hasMentors = userProfile?.mentors?.length > 0
 
   return (
     <div className={`transition-opacity duration-700 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}>
@@ -89,17 +181,35 @@ const Home = () => {
               <h2 className="text-lg font-semibold text-gray-800">Your Skills</h2>
               <Link to="/profile" className="text-sm text-indigo-600 hover:text-indigo-800 hover:underline transition-colors">View All</Link>
             </div>
-            <div className="bg-gray-50 rounded-lg p-5 text-center">
-              <div className="flex justify-center mb-4">
-                <div className="h-16 w-16 bg-indigo-100 rounded-full flex items-center justify-center">
-                  <svg className="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                  </svg>
-                </div>
+            {hasSkills ? (
+              <div className="flex flex-wrap gap-2">
+                {userSkills.slice(0, 5).map((skill, index) => (
+                  <span 
+                    key={index}
+                    className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full text-sm font-medium"
+                  >
+                    {typeof skill === 'string' ? skill : skill.name}
+                  </span>
+                ))}
+                {userSkills.length > 5 && (
+                  <span className="bg-gray-100 text-gray-800 text-xs px-2 py-0.5 rounded">
+                    +{userSkills.length - 5} more
+                  </span>
+                )}
               </div>
-              <p className="text-gray-600 mb-4">Add your skills to get personalized recommendations.</p>
-              <Link to="/profile" className="inline-block bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 transition-colors">Add Skills</Link>
-            </div>
+            ) : (
+              <div className="bg-gray-50 rounded-lg p-5 text-center">
+                <div className="flex justify-center mb-4">
+                  <div className="h-16 w-16 bg-indigo-100 rounded-full flex items-center justify-center">
+                    <svg className="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    </svg>
+                  </div>
+                </div>
+                <p className="text-gray-600 mb-4">Add your skills to get personalized recommendations.</p>
+                <Link to="/profile" className="inline-block bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 transition-colors">Add Skills</Link>
+              </div>
+            )}
           </div>
           
           <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-all duration-300 transform hover:-translate-y-1">
@@ -107,17 +217,28 @@ const Home = () => {
               <h2 className="text-lg font-semibold text-gray-800">Your Projects</h2>
               <Link to="/projects" className="text-sm text-indigo-600 hover:text-indigo-800 hover:underline transition-colors">View All</Link>
             </div>
-            <div className="bg-gray-50 rounded-lg p-5 text-center">
-              <div className="flex justify-center mb-4">
-                <div className="h-16 w-16 bg-indigo-100 rounded-full flex items-center justify-center">
-                  <svg className="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                  </svg>
-                </div>
+            {hasProjects ? (
+              <div className="space-y-2">
+                {userProfile.projects.slice(0, 2).map((project, index) => (
+                  <div key={index} className="border p-3 rounded-lg">
+                    <h3 className="font-medium">{project.name || project.title}</h3>
+                    <p className="text-sm text-gray-600 line-clamp-1">{project.description}</p>
+                  </div>
+                ))}
               </div>
-              <p className="text-gray-600 mb-4">You haven't joined any projects yet.</p>
-              <Link to="/projects" className="inline-block bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 transition-colors">Find Projects</Link>
-            </div>
+            ) : (
+              <div className="bg-gray-50 rounded-lg p-5 text-center">
+                <div className="flex justify-center mb-4">
+                  <div className="h-16 w-16 bg-indigo-100 rounded-full flex items-center justify-center">
+                    <svg className="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                  </div>
+                </div>
+                <p className="text-gray-600 mb-4">You haven't joined any projects yet.</p>
+                <Link to="/projects" className="inline-block bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 transition-colors">Find Projects</Link>
+              </div>
+            )}
           </div>
           
           <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-all duration-300 transform hover:-translate-y-1">
@@ -125,17 +246,27 @@ const Home = () => {
               <h2 className="text-lg font-semibold text-gray-800">Your Mentors</h2>
               <Link to="/mentorship" className="text-sm text-indigo-600 hover:text-indigo-800 hover:underline transition-colors">View All</Link>
             </div>
-            <div className="bg-gray-50 rounded-lg p-5 text-center">
-              <div className="flex justify-center mb-4">
-                <div className="h-16 w-16 bg-indigo-100 rounded-full flex items-center justify-center">
-                  <svg className="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                  </svg>
-                </div>
+            {hasMentors ? (
+              <div className="space-y-2">
+                {userProfile.mentors.slice(0, 2).map((mentorId, index) => (
+                  <Link key={index} to={`/profile/${mentorId}`} className="block border p-3 rounded-lg hover:border-indigo-300">
+                    <h3 className="font-medium">View Mentor Profile</h3>
+                  </Link>
+                ))}
               </div>
-              <p className="text-gray-600 mb-4">Connect with mentors to accelerate your learning.</p>
-              <Link to="/mentorship" className="inline-block bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 transition-colors">Find Mentors</Link>
-            </div>
+            ) : (
+              <div className="bg-gray-50 rounded-lg p-5 text-center">
+                <div className="flex justify-center mb-4">
+                  <div className="h-16 w-16 bg-indigo-100 rounded-full flex items-center justify-center">
+                    <svg className="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                  </div>
+                </div>
+                <p className="text-gray-600 mb-4">Connect with mentors to accelerate your learning.</p>
+                <Link to="/mentorship" className="inline-block bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 transition-colors">Find Mentors</Link>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -154,13 +285,26 @@ const Home = () => {
               </div>
               <Link to="/projects" className="text-sm text-indigo-600 hover:text-indigo-800 hover:underline transition-colors">View All</Link>
             </div>
-            <div className="space-y-4">
-              {recommendedProjects.map((project, index) => (
-                <div key={project.id} className={`transform transition-all duration-300 hover:-translate-y-1 ${isLoaded ? 'opacity-100' : 'opacity-0'}`} style={{ transitionDelay: `${index * 150}ms` }}>
-                  <ProjectCard project={project} />
-                </div>
-              ))}
-            </div>
+            {projectsLoading ? (
+              <div className="flex justify-center items-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+              </div>
+            ) : recommendedProjects.length > 0 ? (
+              <div className="space-y-4">
+                {recommendedProjects.map((project, index) => (
+                  <div key={project.id} className={`transform transition-all duration-300 hover:-translate-y-1 ${isLoaded ? 'opacity-100' : 'opacity-0'}`} style={{ transitionDelay: `${index * 150}ms` }}>
+                    <ProjectCard project={project} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 bg-gray-50 rounded-lg">
+                <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                <p className="mt-2 text-gray-500">No projects available yet</p>
+              </div>
+            )}
           </div>
           
           <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
@@ -175,13 +319,26 @@ const Home = () => {
               </div>
               <Link to="/mentorship" className="text-sm text-indigo-600 hover:text-indigo-800 hover:underline transition-colors">View All</Link>
             </div>
-            <div className="space-y-4">
-              {recommendedMentors.map((mentor, index) => (
-                <div key={mentor.id} className={`transform transition-all duration-300 hover:-translate-y-1 ${isLoaded ? 'opacity-100' : 'opacity-0'}`} style={{ transitionDelay: `${index * 150 + 300}ms` }}>
-                  <MentorCard mentor={mentor} />
-                </div>
-              ))}
-            </div>
+            {mentorsLoading ? (
+              <div className="flex justify-center items-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+              </div>
+            ) : recommendedMentors.length > 0 ? (
+              <div className="space-y-4">
+                {recommendedMentors.map((mentor, index) => (
+                  <div key={mentor.id} className={`transform transition-all duration-300 hover:-translate-y-1 ${isLoaded ? 'opacity-100' : 'opacity-0'}`} style={{ transitionDelay: `${index * 150 + 300}ms` }}>
+                    <MentorCard mentor={mentor} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 bg-gray-50 rounded-lg">
+                <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+                <p className="mt-2 text-gray-500">No mentors available yet</p>
+              </div>
+            )}
           </div>
         </div>
         
